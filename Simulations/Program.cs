@@ -1,58 +1,112 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.IO;
 using System.Linq;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
 
 class Program
 {
     static void Main(string[] args)
     {
-        AI ai = new AI();
-
-        int numTrainingEpisodes = 10000; // Number of training episodes
+        int numTrainingEpisodes = 100; // Number of training episodes
         int numEvaluationEpisodes = 10000; // Number of evaluation episodes
+        int saveInterval = 10; // Interval to save the model
 
-        // Train the AI
+        List<List<int>> medianBalancesOverTime = new List<List<int>>();
+        AI ai = new AI(); // Create a single instance of the AI
+
         for (int episode = 1; episode <= numTrainingEpisodes; episode++)
         {
             ai.RunEpisode();
-            if (episode % 1000 == 0)
+
+            if (episode % saveInterval == 0)
+            {
+                string modelFilePath = $"models/qtable_model_ep{episode}.txt";
+                ai.SaveModel(modelFilePath);
+                Console.WriteLine($"Model saved to {modelFilePath}");
+            }
+
+            if (episode % saveInterval == 0)
             {
                 Console.WriteLine($"Training Episode {episode}/{numTrainingEpisodes}");
+                // Evaluate the model every 1000 episodes
+                List<int> maxBalances = EvaluateModel(ai, numEvaluationEpisodes);
+                medianBalancesOverTime.Add(maxBalances);
+
+                // Calculate and display the median
+                double median = CalculateMedian(maxBalances);
+                Console.WriteLine($"\nMedian Maximum balance reached over {numEvaluationEpisodes} evaluation episodes at episode {episode}: {median}");
             }
         }
 
-        // Save the model
-        string modelFilePath = "qtable_model.txt";
-        ai.SaveModel(modelFilePath);
-        Console.WriteLine($"Model saved to {modelFilePath}");
+        // Export median balances over time to Excel
+        ExportMedianBalancesToExcel(medianBalancesOverTime);
+        Console.WriteLine("Data exported to Excel.");
+    }
 
-        // Load the model
-        AI loadedAI = AI.LoadModel(modelFilePath);
-        Console.WriteLine("Model loaded successfully.");
-
-        // Evaluate the loaded model
+    static List<int> EvaluateModel(AI ai, int numEvaluationEpisodes)
+    {
         List<int> maxBalances = new List<int>();
         for (int episode = 1; episode <= numEvaluationEpisodes; episode++)
         {
-            int maxBalance = loadedAI.RunEpisode();
+            int maxBalance = ai.RunEpisode();
             maxBalances.Add(maxBalance);
-            //Console.WriteLine(maxBalance);
         }
+        return maxBalances;
+    }
 
-        // Calculate the median
-        maxBalances.Sort();
-        double median;
-        if (maxBalances.Count % 2 == 0)
+    static void ExportMedianBalancesToExcel(List<List<int>> medianBalancesPerModel)
+    {
+        FileInfo fileInfo = new FileInfo("MedianBalances.xlsx");
+        using (ExcelPackage package = new ExcelPackage(fileInfo))
         {
-            median = (maxBalances[maxBalances.Count / 2 - 1] + maxBalances[maxBalances.Count / 2]) / 2.0;
+            // Remove the existing worksheet, if it exists
+            ExcelWorksheet existingWorksheet = package.Workbook.Worksheets["Median Balances"];
+            if (existingWorksheet != null)
+            {
+                package.Workbook.Worksheets.Delete(existingWorksheet);
+            }
+
+
+            ExcelWorksheet worksheet = package.Workbook.Worksheets.Add("Median Balances");
+
+            // Add headers
+            worksheet.Cells[1, 1].Value = "Model";
+            worksheet.Cells[1, 2].Value = "Median Balance";
+            worksheet.Cells[1, 1, 1, 2].Style.Font.Bold = true;
+
+            // Populate data
+            int row = 2;
+            for (int i = 0; i < medianBalancesPerModel.Count; i++)
+            {
+                int modelNumber = i + 1;
+                double medianBalance = CalculateMedian(medianBalancesPerModel[i]);
+                worksheet.Cells[row, 1].Value = $"Model {modelNumber}";
+                worksheet.Cells[row, 2].Value = medianBalance;
+                row++;
+            }
+
+            // Auto fit columns
+            worksheet.Cells.AutoFitColumns(0);
+
+            // Save the file
+            package.Save();
+        }
+    }
+
+    static double CalculateMedian(List<int> numbers)
+    {
+        numbers.Sort();
+        int midIndex = numbers.Count / 2;
+        if (numbers.Count % 2 == 0)
+        {
+            return (numbers[midIndex - 1] + numbers[midIndex]) / 2.0;
         }
         else
         {
-            median = maxBalances[maxBalances.Count / 2];
+            return numbers[midIndex];
         }
-
-        Console.WriteLine($"\nMedian Maximum balance reached over {numEvaluationEpisodes} evaluation episodes: {median}");
     }
 }
 
@@ -60,8 +114,9 @@ class AI
 {
     private Random random;
     private Dictionary<int, Dictionary<int, double>> qTable; // Q-table
-    private double learningRate = 0.01; // Learning rate
+    private double learningRate = 0.00000001; // Learning rate
     private double discountFactor = 0.9; // Discount factor
+    private double explorationRate = 0.1; // Exploration rate
 
     public AI()
     {
@@ -72,7 +127,7 @@ class AI
     private void InitializeQTable()
     {
         qTable = new Dictionary<int, Dictionary<int, double>>();
-        for (int balance = 10; balance <= 5000; balance += 10) // Adjusted maximum balance to 10,000
+        for (int balance = 10; balance <= 10000; balance += 10) // Adjusted maximum balance to 10,000
         {
             qTable[balance] = new Dictionary<int, double>();
             for (int bet = 10; bet <= 500; bet += 10) // Adjusted betting range
@@ -95,14 +150,14 @@ class AI
             balanceHistory.Enqueue(initialBalance);
         }
 
-        while (balance > 0 && balance < 5000)
+        while (balance > 0 && balance < 10000)
         {
             int bet = SelectBet(balance);
             int roll = RollDice();
 
             bool win = CheckWin(roll);
 
-            //if (bet >= 10 && bet <= 20) win = true;
+            //if (bet == 120) win = true;
 
 
             balance -= bet;
@@ -114,7 +169,7 @@ class AI
                 balance += bet * 10;
             }
 
-            if (!(balance > 0 && balance < 5000)) return maxBalance;
+            if (!(balance > 0 && balance < 10000)) return maxBalance;
 
             // Calculate reward based on the improvement in balance compared to 10 turns back
             int oldestBalance = balanceHistory.Dequeue();
@@ -138,7 +193,6 @@ class AI
 
     private int SelectBet(int balance)
     {
-        double explorationRate = 0.01; // Exploration rate
         if (random.NextDouble() < explorationRate)
         {
             // Explore: randomly select a bet

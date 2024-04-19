@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="LinqForEEPlus" Version="1.0.1" />
+  </ItemGroup>
+
 </Project>
