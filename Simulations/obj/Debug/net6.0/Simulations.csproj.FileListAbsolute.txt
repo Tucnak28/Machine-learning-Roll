@@ -1,0 +1,15 @@
+C:\Users\Tucna\source\repos\Simulations\Simulations\bin\Debug\net6.0\Simulations.exe
+C:\Users\Tucna\source\repos\Simulations\Simulations\bin\Debug\net6.0\Simulations.deps.json
+C:\Users\Tucna\source\repos\Simulations\Simulations\bin\Debug\net6.0\Simulations.runtimeconfig.json
+C:\Users\Tucna\source\repos\Simulations\Simulations\bin\Debug\net6.0\Simulations.dll
+C:\Users\Tucna\source\repos\Simulations\Simulations\bin\Debug\net6.0\Simulations.pdb
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.csproj.AssemblyReference.cache
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.AssemblyInfoInputs.cache
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.AssemblyInfo.cs
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.csproj.CoreCompileInputs.cache
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.dll
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\refint\Simulations.dll
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.pdb
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\Simulations.genruntimeconfig.cache
+C:\Users\Tucna\source\repos\Simulations\Simulations\obj\Debug\net6.0\ref\Simulations.dll
