@@ -9,7 +9,7 @@ class Program
     {
         AI ai = new AI();
 
-        int numTrainingEpisodes = 100000; // Number of training episodes
+        int numTrainingEpisodes = 10000; // Number of training episodes
         int numEvaluationEpisodes = 10000; // Number of evaluation episodes
 
         // Train the AI
@@ -37,6 +37,7 @@ class Program
         {
             int maxBalance = loadedAI.RunEpisode();
             maxBalances.Add(maxBalance);
+            //Console.WriteLine(maxBalance);
         }
 
         // Calculate the median
@@ -59,7 +60,7 @@ class AI
 {
     private Random random;
     private Dictionary<int, Dictionary<int, double>> qTable; // Q-table
-    private double learningRate = 0.0001; // Learning rate
+    private double learningRate = 0.01; // Learning rate
     private double discountFactor = 0.9; // Discount factor
 
     public AI()
@@ -71,7 +72,7 @@ class AI
     private void InitializeQTable()
     {
         qTable = new Dictionary<int, Dictionary<int, double>>();
-        for (int balance = 10; balance <= 10000; balance += 10) // Adjusted maximum balance to 10,000
+        for (int balance = 10; balance <= 5000; balance += 10) // Adjusted maximum balance to 10,000
         {
             qTable[balance] = new Dictionary<int, double>();
             for (int bet = 10; bet <= 500; bet += 10) // Adjusted betting range
@@ -94,14 +95,14 @@ class AI
             balanceHistory.Enqueue(initialBalance);
         }
 
-        while (balance > 0 && balance < 10000)
+        while (balance > 0 && balance < 5000)
         {
             int bet = SelectBet(balance);
             int roll = RollDice();
 
             bool win = CheckWin(roll);
 
-            if (bet >= 10 && bet <= 20) win = true;
+            //if (bet >= 10 && bet <= 20) win = true;
 
 
             balance -= bet;
@@ -113,7 +114,7 @@ class AI
                 balance += bet * 10;
             }
 
-            if (!(balance > 0 && balance < 10000)) return maxBalance;
+            if (!(balance > 0 && balance < 5000)) return maxBalance;
 
             // Calculate reward based on the improvement in balance compared to 10 turns back
             int oldestBalance = balanceHistory.Dequeue();
@@ -151,7 +152,7 @@ class AI
 
     private int RollDice()
     {
-        return random.Next(10, 101);
+        return random.Next(100000, 1000000);
     }
 
     private bool CheckWin(int roll)
