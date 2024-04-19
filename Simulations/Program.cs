@@ -1,112 +1,199 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 class Program
 {
     static void Main(string[] args)
     {
-        int numSimulations = 10;
-        List<int> roundsPlayedList = new List<int>();
-        List<int> winsList = new List<int>();
-        List<int> lossesList = new List<int>();
-        List<int> maxBalanceList = new List<int>();
-        List<int> minBalanceList = new List<int>();
+        AI ai = new AI();
 
-        for (int i = 0; i < numSimulations; i++)
+        int numTrainingEpisodes = 100000; // Number of training episodes
+        int numEvaluationEpisodes = 10000; // Number of evaluation episodes
+
+        // Train the AI
+        for (int episode = 1; episode <= numTrainingEpisodes; episode++)
         {
-            var (roundsPlayed, wins, losses, maxBalance, minBalance) = RunRollGame();
-            roundsPlayedList.Add(roundsPlayed);
-            winsList.Add(wins);
-            lossesList.Add(losses);
-            maxBalanceList.Add(maxBalance);
-            minBalanceList.Add(minBalance);
+            ai.RunEpisode();
+            if (episode % 1000 == 0)
+            {
+                Console.WriteLine($"Training Episode {episode}/{numTrainingEpisodes}");
+            }
         }
 
-        Console.WriteLine("\nMedian Statistics:");
-        Console.WriteLine($"- Median Rounds played: {CalculateMedian(roundsPlayedList)}");
-        Console.WriteLine($"- Median Wins: {CalculateMedian(winsList)}");
-        Console.WriteLine($"- Median Losses: {CalculateMedian(lossesList)}");
-        Console.WriteLine($"- Median Maximum balance reached: {CalculateMedian(maxBalanceList)}");
-        Console.WriteLine($"- Median Minimum balance reached: {CalculateMedian(minBalanceList)}");
+        // Save the model
+        string modelFilePath = "qtable_model.txt";
+        ai.SaveModel(modelFilePath);
+        Console.WriteLine($"Model saved to {modelFilePath}");
+
+        // Load the model
+        AI loadedAI = AI.LoadModel(modelFilePath);
+        Console.WriteLine("Model loaded successfully.");
+
+        // Evaluate the loaded model
+        List<int> maxBalances = new List<int>();
+        for (int episode = 1; episode <= numEvaluationEpisodes; episode++)
+        {
+            int maxBalance = loadedAI.RunEpisode();
+            maxBalances.Add(maxBalance);
+        }
+
+        // Calculate the median
+        maxBalances.Sort();
+        double median;
+        if (maxBalances.Count % 2 == 0)
+        {
+            median = (maxBalances[maxBalances.Count / 2 - 1] + maxBalances[maxBalances.Count / 2]) / 2.0;
+        }
+        else
+        {
+            median = maxBalances[maxBalances.Count / 2];
+        }
+
+        Console.WriteLine($"\nMedian Maximum balance reached over {numEvaluationEpisodes} evaluation episodes: {median}");
+    }
+}
+
+class AI
+{
+    private Random random;
+    private Dictionary<int, Dictionary<int, double>> qTable; // Q-table
+    private double learningRate = 0.0001; // Learning rate
+    private double discountFactor = 0.9; // Discount factor
+
+    public AI()
+    {
+        random = new Random();
+        InitializeQTable();
     }
 
-    static (int, int, int, int, int) RunRollGame()
+    private void InitializeQTable()
     {
-        Random random = new Random();
+        qTable = new Dictionary<int, Dictionary<int, double>>();
+        for (int balance = 10; balance <= 10000; balance += 10) // Adjusted maximum balance to 10,000
+        {
+            qTable[balance] = new Dictionary<int, double>();
+            for (int bet = 10; bet <= 500; bet += 10) // Adjusted betting range
+            {
+                qTable[balance][bet] = 0; // Initialize Q-values to 0
+            }
+        }
+    }
+
+    public int RunEpisode()
+    {
         int initialBalance = 1000;
         int balance = initialBalance;
-        int roundsPlayed = 0;
-        int wins = 0;
-        int losses = 0;
         int maxBalance = initialBalance;
-        int minBalance = initialBalance;
 
-        while (balance > 0)
+        // Track balance history for the last 10 turns
+        Queue<int> balanceHistory = new Queue<int>();
+        for (int i = 0; i < 10; i++)
         {
-            int roll = RollDice(random);
-            int bet = CalculateBet(balance);
+            balanceHistory.Enqueue(initialBalance);
+        }
+
+        while (balance > 0 && balance < 10000)
+        {
+            int bet = SelectBet(balance);
+            int roll = RollDice();
 
             bool win = CheckWin(roll);
 
+            if (bet >= 10 && bet <= 20) win = true;
+
+
             balance -= bet;
-            roundsPlayed++;
+
+            
 
             if (win)
             {
-                int winAmount = bet * 10;
-                balance += winAmount;
-                wins++;
-            }
-            else
-            {
-                losses++;
+                balance += bet * 10;
             }
 
-            // Update max and min balance
+            if (!(balance > 0 && balance < 10000)) return maxBalance;
+
+            // Calculate reward based on the improvement in balance compared to 10 turns back
+            int oldestBalance = balanceHistory.Dequeue();
+            int reward = balance - oldestBalance;
+
+            // Update balance history
+            balanceHistory.Enqueue(balance);
+
+            // Update max balance
             maxBalance = Math.Max(maxBalance, balance);
-            minBalance = Math.Min(minBalance, balance);
+
+            // Update Q-values based on reward
+            double oldQValue = qTable[oldestBalance][bet];
+            double maxNextQValue = qTable[balance].Values.Max(); // Max Q-value for the next state
+            double newQValue = oldQValue + learningRate * (reward + discountFactor * maxNextQValue - oldQValue);
+            qTable[oldestBalance][bet] = newQValue; // Update Q-value
         }
 
-        return (roundsPlayed, wins, losses, maxBalance, minBalance);
+        return maxBalance;
     }
 
-    static int RollDice(Random random)
+    private int SelectBet(int balance)
     {
-        return random.Next(100000, 1000000);
+        double explorationRate = 0.01; // Exploration rate
+        if (random.NextDouble() < explorationRate)
+        {
+            // Explore: randomly select a bet
+            return (random.Next(10, 51)) * 10; // Random bet between 10 and 500
+        }
+        else
+        {
+            return qTable[balance].OrderByDescending(kv => kv.Value).First().Key;
+        }
     }
 
-    static bool CheckWin(int roll)
+    private int RollDice()
+    {
+        return random.Next(10, 101);
+    }
+
+    private bool CheckWin(int roll)
     {
         return roll % 10 == roll / 10 % 10;
     }
 
-    static int CalculateBet(int balance)
+    public void SaveModel(string filePath)
     {
-        int bet;
-        if (balance < 10)
+        using (StreamWriter writer = new StreamWriter(filePath))
         {
-            bet = 1;
+            foreach (var balanceEntry in qTable)
+            {
+                foreach (var betEntry in balanceEntry.Value)
+                {
+                    writer.WriteLine($"{balanceEntry.Key}#{betEntry.Key}#{betEntry.Value}");
+                }
+            }
         }
-        else
-        {
-            bet = (int)(balance * 0.1);
-        }
-
-        return bet;
     }
 
-    static int CalculateMedian(List<int> numbers)
+    public static AI LoadModel(string filePath)
     {
-        numbers.Sort();
-        int midIndex = numbers.Count / 2;
-        if (numbers.Count % 2 == 0)
+        AI loadedAI = new AI();
+        using (StreamReader reader = new StreamReader(filePath))
         {
-            return (numbers[midIndex - 1] + numbers[midIndex]) / 2;
+            string line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                string[] parts = line.Split('#');
+                int balance = int.Parse(parts[0]);
+                int bet = int.Parse(parts[1]);
+                double qValue = double.Parse(parts[2]);
+
+                //Console.WriteLine(qValue);
+                loadedAI.qTable[balance][bet] = qValue;
+            }
         }
-        else
-        {
-            return numbers[midIndex];
-        }
+        return loadedAI;
     }
+
+
+
+
 }
