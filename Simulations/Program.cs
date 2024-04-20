@@ -9,9 +9,9 @@ class Program
 {
     static void Main(string[] args)
     {
-        int numTrainingEpisodes = 100; // Number of training episodes
+        int numTrainingEpisodes = 10000; // Number of training episodes
         int numEvaluationEpisodes = 10000; // Number of evaluation episodes
-        int saveInterval = 10; // Interval to save the model
+        int saveInterval = 1000; // Interval to save the model
 
         List<List<int>> medianBalancesOverTime = new List<List<int>>();
         AI ai = new AI(); // Create a single instance of the AI
@@ -114,13 +114,14 @@ class AI
 {
     private Random random;
     private Dictionary<int, Dictionary<int, double>> qTable; // Q-table
-    private double learningRate = 0.00000001; // Learning rate
-    private double discountFactor = 0.9; // Discount factor
-    private double explorationRate = 0.1; // Exploration rate
+    private double learningRate = 0.00000000001; // Learning rate
+    private double discountFactor = 0.09; // Discount factor
+    private double explorationRate = 0.01; // Exploration rate
+
 
     public AI()
     {
-        random = new Random();
+        random = new Random(69);
         InitializeQTable();
     }
 
